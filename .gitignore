@@ -2,3 +2,4 @@ venv/*
 Data/*
 .ipynb_checkpoints/*
 __pycache__/*
+.venv/
