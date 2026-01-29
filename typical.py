@@ -27,7 +27,7 @@ def find_typical_class_member(
                 dists = np.linalg.norm(diff, axis=2).sum(axis=1)
             case _:
                 raise ValueError(
-                    f"method should be one of {", ".join(get_args(get_type_hints(find_typical_class_member)["method"]))}"
+                    f"method should be one of {', '.join(get_args(get_type_hints(find_typical_class_member)['method']))}"
                 )
         typical_idxn[label] = idxn[np.argmin(dists)]
     return typical_idxn
