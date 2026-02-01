@@ -1,0 +1,131 @@
+import pandas as pd
+import librosa
+from tqdm.notebook import tqdm
+from tslearn.metrics import dtw
+from typical import find_typical_class_member
+from typing import Literal
+
+
+def full_filename_from_path(path):
+    g = path.split('.')[0]
+    return f'Data/genres_original/{g}/{path}'
+
+
+def get_sb(audio_path):
+    n_fft = 2048
+    hop_length = 512
+    audio_path = full_filename_from_path(audio_path)
+    y, sr = librosa.load(audio_path, sr=None)
+    sb = librosa.feature.spectral_bandwidth(y=y, sr=sr, n_fft=n_fft,
+                                            hop_length=hop_length)
+    return sb.flatten()
+
+
+def get_zero_crossing_rate(audio_path):
+    frame_length = 2048
+    hop_length = 512
+    audio_path = full_filename_from_path(audio_path)
+    y, _ = librosa.load(audio_path, sr=None)
+    zcr = librosa.feature.zero_crossing_rate(y=y, frame_length=frame_length,
+                                             hop_length=hop_length)
+    return zcr.flatten()
+
+
+def get_rms(audio_path):
+    frame_length = 2048
+    hop_length = 512
+    audio_path = full_filename_from_path(audio_path)
+    y, _ = librosa.load(audio_path, sr=None)
+    rms = librosa.feature.rms(y=y, frame_length=frame_length,
+                              hop_length=hop_length)
+    return rms.flatten()
+
+
+def downsample(x, factor=5):
+    return x[::factor]
+
+
+feature_to_function = {
+        "rms": get_rms,
+        "zero_crossing_rate": get_zero_crossing_rate,
+        "spectral_bandwidth": get_sb,
+}
+
+
+def create_dtw_distances(old_csv_path: str, new_csv_path: str,
+                         feature_to_measure: Literal["rms", "zero_crossing_rate", "spectral_bandwidth"] = "rms",
+                         downsample_factor: int = 5,
+                         verbose=False):
+    """
+    old_csv_path - path to the old csv
+    new_csv_path - path where the new csv will be created
+    feature_to_measure - which feature will be used for measuring the distance
+    downsample_factor - how much to scale down amount of data measured for a feature
+    verbose - print messages about progress
+
+    This function takes old csv and adds 10 new features to each row: distances
+    from typical songs from each genre to the song from that row (distances are
+    computed with dtw)
+    """
+    get_fun = feature_to_function[feature_to_measure]
+
+    df = pd.read_csv(old_csv_path)
+    # Removing invalid file
+    df = df.drop(df[df['filename'] == 'jazz.00054.wav'].index)
+
+    all_paths = list(df['filename'])
+    all_paths = list(filter(lambda p: p != 'jazz.00054.wav', all_paths))
+
+    # Get typical songs =======================================================
+
+    genres = df['label'].unique()
+    X = df.drop(["filename", "length", "label"], axis=1)
+    y = df["label"]
+    typical_songs = {}
+    for k, v in find_typical_class_member(X=X, y=y, method='centroid').items():
+        typical_songs[k] = df.iloc[v]['filename']
+
+    # Compute selected feature ================================================
+
+    if verbose:
+        print('Computing time series for all songs...')
+
+    sb_cache = {
+        path: downsample(get_fun(path), factor=downsample_factor)
+        for path in tqdm(all_paths)
+    }
+
+    if verbose:
+        print('Get time series for typical songs...')
+
+    typical_sb = {
+        g: sb_cache[typical_songs[g]]
+        for g in genres
+    }
+
+    # Compute distances for each song =========================================
+
+    distance_from_typical = {
+        f'dist_from_{g}': []
+        for g in genres
+    }
+
+    if verbose:
+        print('Computing distances...')
+
+    for path in tqdm(all_paths):
+        song_sb = sb_cache[path]
+        for g in genres:
+            g_sb = typical_sb[g]
+            dist = dtw(song_sb, g_sb)
+            distance_from_typical[f'dist_from_{g}'].append(dist)
+    dist_df = pd.DataFrame(distance_from_typical)
+
+    # Add computed distances to the dataframe and save as csv =================
+
+    extra_data = pd.concat(
+        [df.reset_index(drop=True),
+         dist_df.reset_index(drop=True)],
+        axis=1
+    )
+    extra_data.to_csv(new_csv_path, index=False)
