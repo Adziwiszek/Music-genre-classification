@@ -129,3 +129,61 @@ def create_dtw_distances(old_csv_path: str, new_csv_path: str,
         axis=1
     )
     extra_data.to_csv(new_csv_path, index=False)
+
+
+class DTWFeatureGenerator:
+    def __init__(self, dist_type='rms', downsample_factor=5):
+        self.downsample_factor = downsample_factor
+        self.feature_fun = feature_to_function[dist_type]
+
+    def fit(self, df):
+        """Takes training df and finds most typical songs."""
+        df = df.drop(df[df['filename'] == 'jazz.00054.wav'].index)
+
+        self.train_paths = list(df['filename'])
+        self.genres = df['label'].unique()
+
+        # find typical songs
+        X = df.drop(["filename", "length", "label"], axis=1)
+        y = df["label"]
+        self.typical_songs = {}
+        for k, v in find_typical_class_member(X=X, y=y, method='centroid').items():
+            self.typical_songs[k] = df.iloc[v]['filename']
+
+        # calculate feature for typical songs
+        self.typical_cache = {
+            g: downsample(self.feature_fun(p), factor=self.downsample_factor)
+            for g, p in tqdm(self.typical_songs.items())
+        }
+
+    def transform(self, df, new_csv_path=None):
+        """Calculates new features for rows from df and optionally saves that
+        new df to new_csv_path."""
+        paths = list(df['filename'])
+
+        feature_cache = {
+            path: downsample(self.feature_fun(path), factor=self.downsample_factor)
+            for path in tqdm(paths)
+        }
+
+        distance_from_typical = {
+            f'dist_from_{g}': []
+            for g in self.genres
+        }
+
+        for path in tqdm(paths):
+            song_feature = feature_cache[path]
+            for g in self.genres:
+                g_feature = self.typical_cache[g]
+                dist = dtw(song_feature, g_feature)
+                distance_from_typical[f'dist_from_{g}'].append(dist)
+        dist_df = pd.DataFrame(distance_from_typical)
+
+        extra_data = pd.concat(
+            [df.reset_index(drop=True),
+             dist_df.reset_index(drop=True)],
+            axis=1
+        )
+        if new_csv_path:
+            extra_data.to_csv(new_csv_path, index=False)
+        return extra_data
