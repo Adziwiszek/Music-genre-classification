@@ -213,16 +213,19 @@ if __name__ == "__main__":
         os.mkdir('Data/DTWFeatures')
 
     old_csv = 'Data/features_30_sec.csv'
-    train_csv_path = dtw_path + '/train.csv'
-    test_csv_path = dtw_path + '/test.csv'
+    train_csv_path = dtw_path + '/baseline_train.csv'
+    test_csv_path = dtw_path + '/baseline_test.csv'
+
+    train_csv_path_dtw = dtw_path + '/dtw_train.csv'
+    test_csv_path_dtw = dtw_path + '/dtw_test.csv'
 
     # splititng the data
     train_df, test_df = train_test_split_df(old_csv, train_csv=train_csv_path, test_csv=test_csv_path)
 
     # calculating new features and saving to csv
-    generator = DTWFeatureGenerator(dist_type='rms', downsample_factor=5)
+    generator = DTWFeatureGenerator(dist_type='zero_crossing_rate', downsample_factor=5)
     generator.fit(train_df)
-    generator.transform(train_df, new_csv_path=train_csv_path)
-    generator.transform(test_df, new_csv_path=test_csv_path)
+    generator.transform(train_df, new_csv_path=train_csv_path_dtw)
+    generator.transform(test_df, new_csv_path=test_csv_path_dtw)
 
     print(f'Created DTW features and saved them to {train_csv_path} and {test_csv_path}')

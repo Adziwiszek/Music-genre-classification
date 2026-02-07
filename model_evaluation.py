@@ -2,7 +2,7 @@ from sklearn import svm
 from sklearn.svm import LinearSVC
 import pandas as pd
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Optional
 import numpy as np
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
