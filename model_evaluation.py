@@ -17,11 +17,13 @@ from sklearn.model_selection import train_test_split
 @dataclass
 class EvalConfig:
     train_path: str               # or full path
-    test_path: Optional[str] = None
     pipeline : Pipeline
     drop_cols : list 
+
+    test_path: Optional[str] = None
     target_col: str = 'label'
     test_size: float = 0.3
+    random_state: int = 42
     
 @dataclass
 class EvalModel():
@@ -65,7 +67,7 @@ class EvalModel():
         return None
 
     def _prepare_data(self, filepath: str):
-        df = pd.read_csv(self.config.csv_path)
+        df = pd.read_csv(filepath)
         X, y = df.drop(self.config.drop_cols, axis=1, errors='ignore'), df[self.config.target_col]
         return X, y
 
@@ -99,6 +101,7 @@ class EvalModel():
         results = self.evaluate()
 
         report_dict = results["report"]
+        accuracy_val = report_dict.get("accuracy", 0)
     
         report_df = pd.DataFrame(report_dict).T
         report_df = report_df.drop(['accuracy', 'macro avg', 'weighted avg'], errors='ignore')
@@ -106,6 +109,7 @@ class EvalModel():
     
         sns.set_theme(style="whitegrid")
         fig, ax = plt.subplots(1, 3, figsize=(22, 7))
+        plt.suptitle(f"Model Evaluation Dashboard (Overall Accuracy: {accuracy_val:.2%})", fontsize=16, weight='bold')
 
         # Metrics (Heatmap)
         sns.heatmap(report_df, annot=True, cmap='YlGnBu', fmt=".2f", ax=ax[0])
