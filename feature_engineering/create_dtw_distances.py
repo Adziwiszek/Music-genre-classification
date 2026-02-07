@@ -2,6 +2,7 @@ import pandas as pd
 import librosa
 from tqdm.notebook import tqdm
 from tslearn.metrics import dtw
+from sklearn.model_selection import train_test_split
 from typical import find_typical_class_member
 from typing import Literal
 
@@ -187,3 +188,41 @@ class DTWFeatureGenerator:
         if new_csv_path:
             extra_data.to_csv(new_csv_path, index=False)
         return extra_data
+
+def train_test_split_df(old_csv_path, train_csv=None, test_csv=None, test_size=0.3, random_state=42):
+    old_df = pd.read_csv(old_csv_path)
+    train_df, test_df = train_test_split(old_df, test_size=test_size, random_state=random_state)
+    if train_csv:
+        train_df.to_csv(train_csv, index=False)
+        print(f'saved train df to {train_csv}')
+    if test_csv:
+        test_df.to_csv(test_csv, index=False)
+        print(f'saved test df to {test_csv}')
+    return train_df, test_df
+
+
+if __name__ == "__main__":
+    """Crate new csv with calculated dtw features."""
+    import os
+    from pathlib import Path 
+    from tqdm import tqdm
+
+    dtw_path = 'Data/DTWFeatures'
+    dtw_dir_path = Path(dtw_path)
+    if not dtw_dir_path.exists():
+        os.mkdir('Data/DTWFeatures')
+
+    old_csv = 'Data/features_30_sec.csv'
+    train_csv_path = dtw_path + '/train.csv'
+    test_csv_path = dtw_path + '/test.csv'
+
+    # splititng the data
+    train_df, test_df = train_test_split_df(old_csv, train_csv=train_csv_path, test_csv=test_csv_path)
+
+    # calculating new features and saving to csv
+    generator = DTWFeatureGenerator(dist_type='rms', downsample_factor=5)
+    generator.fit(train_df)
+    generator.transform(train_df, new_csv_path=train_csv_path)
+    generator.transform(test_df, new_csv_path=test_csv_path)
+
+    print(f'Created DTW features and saved them to {train_csv_path} and {test_csv_path}')
