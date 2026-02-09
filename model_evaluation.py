@@ -22,7 +22,7 @@ class EvalConfig:
 
     test_path: Optional[str] = None
     target_col: str = 'label'
-    test_size: float = 0.3
+    test_size: float = 0.2
     random_state: int = 42
     
 @dataclass
@@ -106,7 +106,8 @@ class EvalModel():
         report_df = pd.DataFrame(report_dict).T
         report_df = report_df.drop(['accuracy', 'macro avg', 'weighted avg'], errors='ignore')
         report_df = report_df[['precision', 'recall', 'f1-score']]
-    
+
+        
         sns.set_theme(style="whitegrid")
         fig, ax = plt.subplots(1, 3, figsize=(22, 7))
         plt.suptitle(f"Model Evaluation Dashboard (Overall Accuracy: {accuracy_val:.2%})", fontsize=16, weight='bold')
@@ -131,7 +132,7 @@ class EvalModel():
             ax[2].set_title(f'Top 10 Features \nSource: {self.feature_source_name}')
             ax[2].set_xlabel('Importance Score')
         else:
-            ax[2].text(0.5, 0.5, "SelectKBest not found in Pipeline", ha='center')
+            ax[2].text(0.5, 0.5, "None", ha='center')
     
         plt.tight_layout()
         plt.show()
