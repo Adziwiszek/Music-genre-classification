@@ -36,6 +36,10 @@ class EvalModel():
         Selects k best if SelectKBest is in Pipeline.
         If not, we show coef_ or feature_importances_, depending on the model
         """
+        if not hasattr(self.config.pipeline, 'named_steps'):
+            self.feature_source_name = "N/A (Ensemble/Voting)"
+        return None
+
         feature_names = X.columns
         importances = None
         self.feature_source_name = "N/A"
