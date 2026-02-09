@@ -3,3 +3,4 @@ Data/*
 .ipynb_checkpoints/*
 __pycache__/*
 .venv/
+FeatureEngineering/__pycache__/*
