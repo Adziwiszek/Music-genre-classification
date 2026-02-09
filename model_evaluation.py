@@ -8,7 +8,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 import seaborn as sns
 import matplotlib.pyplot as plt
 
@@ -80,44 +80,48 @@ class EvalModel():
 
     def evaluate(self):
         if self.config.X is not None and self.config.y is not None:
-            X_train, X_test, y_train, y_test = train_test_split(
-                self.config.X, self.config.y,
-                test_size=self.config.test_size,
-                random_state=self.config.random_state,
-                stratify=self.config.y
-            )
-
+            X = self.config.X
+            y = self.config.y
         elif self.config.df is not None:
-            X, y = self.config.df.drop(self.config.drop_cols, axis=1, errors='ignore'), self.config.df[self.config.target_col]
-            X_train, X_test, y_train, y_test = train_test_split(
-                X, y,
-                test_size=self.config.test_size,
-                random_state=self.config.random_state,
-                stratify=y
-            )
-
+            X = self.config.df.drop(self.config.drop_cols, axis=1, errors='ignore')
+            y = self.config.df[self.config.target_col]
         elif self.config.test_path:
             X_train, y_train = self._prepare_data(self.config.train_path)
             X_test, y_test = self._prepare_data(self.config.test_path)
-        
+            self.config.pipeline.fit(X_train, y_train)
+            self.y_test = y_test
+            self.y_pred = self.config.pipeline.predict(X_test)
+            feature_importance = self.get_feature_scores(X_test)
+            return {
+                "report": classification_report(self.y_test, self.y_pred, output_dict=True, zero_division=0),
+                "feature_importance": feature_importance
+            }
         else:
             X, y = self._prepare_data(self.config.train_path)
-            X_train, X_test, y_train, y_test = train_test_split(
-                X, y,
-                test_size=self.config.test_size,
-                random_state=self.config.random_state,
-                stratify=y
-            )
         
-        self.config.pipeline.fit(X_train, y_train)
+        le = LabelEncoder()
+        y_encoded = le.fit_transform(y)
         
-        self.y_test = y_test
-        self.y_pred = self.config.pipeline.predict(X_test)
+        X_train, X_test, y_train_encoded, y_test_encoded = train_test_split(
+            X, y_encoded,
+            test_size=self.config.test_size,
+            random_state=self.config.random_state,
+            stratify=y_encoded
+        )
+        
+        X_train = pd.DataFrame(X_train, columns=X.columns)
+        X_test = pd.DataFrame(X_test, columns=X.columns)
+        
+        self.config.pipeline.fit(X_train, y_train_encoded)
+        
+        y_pred_encoded = self.config.pipeline.predict(X_test)
+        self.y_test = le.inverse_transform(y_test_encoded)
+        self.y_pred = le.inverse_transform(y_pred_encoded)
         
         feature_importance = self.get_feature_scores(X_test)
         
         return {
-            "report": classification_report(self.y_test, self.y_pred, output_dict=True,zero_division=0),
+            "report": classification_report(self.y_test, self.y_pred, output_dict=True, zero_division=0),
             "feature_importance": feature_importance
         }
 

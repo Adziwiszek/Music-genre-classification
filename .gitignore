@@ -4,3 +4,4 @@ Data/*
 __pycache__/*
 .venv/
 FeatureEngineering/__pycache__/*
+Models/__pycache__/*

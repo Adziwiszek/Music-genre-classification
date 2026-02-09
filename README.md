@@ -8,4 +8,6 @@ Before you run any code make sure to run `prepare_dataset.py` script for ease of
 
 ## Feature engineering
 
-To create datasets with DTW features run `py -m feature_engineering.create_dtw_distances`
+To create datasets with DTW features run `python -m feature_engineering.create_dtw_distances`
+
+To create datasets with time series features run `python -m feature_engineering.create_ts_data`
