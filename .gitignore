@@ -5,3 +5,4 @@ __pycache__/*
 .venv/
 FeatureEngineering/__pycache__/*
 Models/__pycache__/*
+prediction_model.joblib
